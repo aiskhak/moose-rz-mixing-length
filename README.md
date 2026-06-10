@@ -22,7 +22,7 @@ The repository is organized as a set of focused verification and demonstration c
 
 ## Use
 
-Each case folder contains the ready-to-run input files, run scripts, post-processing scripts, and reported tables. The case-generation scripts are not included.
+Each case folder contains the ready-to-run input files, run scripts, post-processing scripts, and reported tables.
 
 Edit the MOOSE executable path in the run scripts if needed before running the cases.
 
