@@ -1,10 +1,10 @@
-02_mms_velocity
+#02_mms_velocity
 
 This case verifies the full RZ finite-volume solver setup using the final effective-viscosity formulation.
 
 The test uses a manufactured solution for velocity and pressure. The velocity field is constructed from an axisymmetric streamfunction, so the RZ incompressibility constraint is satisfied exactly.
 
-Manufactured solution
+##Manufactured solution
 
 The RZ domain is
 
