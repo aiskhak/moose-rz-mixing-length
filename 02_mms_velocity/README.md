@@ -4,7 +4,43 @@ This case verifies the full RZ finite-volume solver setup using the final effect
 
 The test uses a manufactured solution for velocity and pressure. The exact velocity field is RZ-divergence-free by construction.
 
-## Verified setup
+## Manufactured solution
+
+The RZ domain is
+
+`x in [0, 1]`, `r in [0, 1]`
+
+with `r = 0` as the symmetry axis.
+
+The manufactured velocity is generated from a streamfunction so that the RZ continuity equation is satisfied exactly:
+
+`uz = (1/r)*dpsi/dr`
+
+`ur = -(1/r)*dpsi/dx`
+
+The streamfunction is written in nonsingular polynomial form using
+
+`A(x) = x^2*(1 - x)^2`
+
+`R(r)/r = r^2 - 2*r^3 + r^4`
+
+`(dR/dr)/r = 3*r - 8*r^2 + 5*r^3`
+
+Therefore,
+
+`uz(x,r) = A(x)*(3*r - 8*r^2 + 5*r^3)`
+
+`ur(x,r) = -dA/dx*(r^2 - 2*r^3 + r^4)`
+
+The manufactured pressure is
+
+`p(x,r) = x*r^2`
+
+The pressure is pinned at
+
+`(x,r) = (0.5, 0.5)`.
+
+## Effective viscosity
 
 The input uses
 
@@ -13,6 +49,16 @@ The input uses
 and
 
 `mu_eff = mu + mu_t`.
+
+The constants are
+
+`rho = 1`
+
+`mu = 1.0e-2`
+
+`l_m = 0.20`
+
+## Verified setup
 
 The effective viscosity `mu_eff` is supplied to
 
