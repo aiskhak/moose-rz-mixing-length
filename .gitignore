@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+
+# MOOSE/libMesh outputs
+*.e
+*.e-s*
+*.exo
+*.exodus
+*.cpr/
+*.cpr
+*.log
+
+# Checkpoints / restarts
+*_out_cp/
+*_out.cpr/
+*.cpr/
+
+# Temporary files
+*.tmp
+*.bak
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*~
