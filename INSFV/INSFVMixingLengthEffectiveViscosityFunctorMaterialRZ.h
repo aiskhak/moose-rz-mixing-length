@@ -34,7 +34,6 @@ INSFVMixingLengthEffectiveViscosityFunctorMaterialRZ::computeTurbulentViscosity(
 {
   using std::sqrt;
 
-  //constexpr Real offset = 1e-15;
   constexpr Real radius_tol = 1e-14;
 
   const auto grad_u = _u.gradient(r, t);
