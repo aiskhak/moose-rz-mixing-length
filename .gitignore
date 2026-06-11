@@ -2,26 +2,25 @@
 __pycache__/
 *.pyc
 
-# MOOSE/libMesh outputs
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+.DS_Store
+*~
+
+# MOOSE / libMesh heavy outputs
 *.e
 *.e-s*
 *.exo
 *.exodus
+
+# MOOSE checkpoints / restarts
+*_cp/
+*_out_cp/
 *.cpr/
 *.cpr
-*.log
 
-# Checkpoints / restarts
-*_out_cp/
-*_out.cpr/
-*.cpr/
-
-# Temporary files
-*.tmp
-*.bak
-.DS_Store
-
-# Editor
+# Editors
 .vscode/
 .idea/
-*~

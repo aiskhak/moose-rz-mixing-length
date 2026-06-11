@@ -4,7 +4,7 @@ This repository contains source files, MOOSE input files, and verification resul
 
 **A Note on Using Axisymmetric Mixing-Length Eddy Viscosity in MOOSE**
 
-The repository is organized as a set of focused verification and demonstration cases. Details for each case are provided in the corresponding folder README.
+The repository is organized as focused verification and demonstration cases. Details for each case are provided in the corresponding folder README.
 
 ## Contents
 
@@ -20,11 +20,16 @@ The repository is organized as a set of focused verification and demonstration c
 - `03_tamu_demo/`  
   Reactor-relevant axisymmetric demonstration case.
 
+- `MOOSE_VERSION.txt`  
+  MOOSE and dependency versions used for the reported calculations.
+
 ## Use
 
-Each case folder contains the ready-to-run input files, run scripts, post-processing scripts, and reported tables.
+Each case folder contains ready-to-run input files, run scripts, post-processing scripts, and reported tables.
 
-Edit the MOOSE executable path in the run scripts if needed before running the cases.
+The case-generation scripts are intentionally not included. The stored MOOSE input files are the reproducible inputs used for the reported results.
+
+Edit the MOOSE executable path in the run scripts before running on a different system.
 
 ## Citation
 

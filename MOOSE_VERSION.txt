@@ -1,0 +1,13 @@
+MOOSE / dependency versions used for the reported calculations
+
+MOOSE Version: git commit 28092e1647 on 2026-02-01
+PETSc Version: 3.24.3
+SLEPc Version: 3.24.0
+
+Application executable used in the original runs:
+/homes/aiskhak/projects/fv_app/fv_app-opt
+
+Notes:
+- The run scripts contain this local executable path and should be edited for other systems.
+- The input files were generated and then stored directly in this repository.
+- The case-generation scripts are intentionally not included.
