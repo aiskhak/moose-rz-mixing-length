@@ -10,4 +10,3 @@ Application executable used in the original runs:
 Notes:
 - The run scripts contain this local executable path and should be edited for other systems.
 - The input files were generated and then stored directly in this repository.
-- The case-generation scripts are intentionally not included.
