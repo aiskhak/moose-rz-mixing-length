@@ -62,7 +62,21 @@ The constants are
 
 The analytical forcing terms were generated with SymPy from the manufactured velocity, pressure, and effective-viscosity fields.
 
-The symbolic generation script is not included in this repository. The resulting forcing expressions are embedded directly in the generated MOOSE input files in each grid folder:
+The script
+
+`generate_manufactured_solution.py`
+
+prints the manufactured fields, pressure pin, and MOOSE `[Functions]` block. It also writes
+
+`manufactured_solution_functions.txt`
+
+for reference.
+
+Run it with
+
+`python3 generate_manufactured_solution.py`
+
+The resulting forcing expressions are embedded directly in the generated MOOSE input files in each grid folder:
 
 `n16/velocity_mms_n16.i`
 
@@ -71,8 +85,6 @@ The symbolic generation script is not included in this repository. The resulting
 `n64/velocity_mms_n64.i`
 
 `n128/velocity_mms_n128.i`
-
-These input files are the reproducible source for the MMS calculations reported here.
 
 ## Verified setup
 
