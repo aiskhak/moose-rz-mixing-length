@@ -8,9 +8,10 @@ INSFVMixingLengthEffectiveViscosityFunctorMaterialRZ::validParams()
   InputParameters params = FunctorMaterial::validParams();
 
   params.addClassDescription(
-      "RZ-aware effective dynamic viscosity functor material for the INSFV mixing-length "
-      "model. The turbulent contribution is mu_t = rho * l_m^2 * |S|_RZ, and the effective "
-      "viscosity is mu_eff = mu + mu_t.");
+    "RZ-aware effective dynamic viscosity functor material for the INSFV mixing-length "
+    "model. The turbulent contribution is mu_t = rho * l_m^2 * |S|_RZ, where |S|_RZ "
+    "is computed from the cylindrical-coordinate strain-rate invariant including the "
+    "hoop-strain contribution u_r / r. The effective viscosity is mu_eff = mu + mu_t.");
 
   params.addRequiredParam<MooseFunctorName>(
       "property_name", "Name of the effective dynamic viscosity property.");

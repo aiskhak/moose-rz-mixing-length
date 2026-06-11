@@ -34,7 +34,7 @@ INSFVMixingLengthEffectiveViscosityFunctorMaterialRZ::computeTurbulentViscosity(
 {
   using std::sqrt;
 
-  constexpr Real offset = 1e-15;
+  //constexpr Real offset = 1e-15;
   constexpr Real radius_tol = 1e-14;
 
   const auto grad_u = _u.gradient(r, t);
@@ -93,9 +93,14 @@ INSFVMixingLengthEffectiveViscosityFunctorMaterialRZ::computeTurbulentViscosity(
   else if constexpr (std::is_same_v<std::decay_t<SpaceArg>, Moose::ElemPointArg>)
     radius = r.elem->vertex_average()(_rz_radial_coord);
   else if constexpr (std::is_same_v<std::decay_t<SpaceArg>, Moose::NodeArg>)
-    return ADReal(0.0);
+    mooseError(name(),
+               ": nodal evaluation is not supported for ",
+               "INSFVMixingLengthEffectiveViscosityFunctorMaterialRZ. ",
+               "Use element, face, element-QP, element-side-QP, or element-point evaluation.");
   else
-    return ADReal(0.0);
+    mooseError(name(),
+               ": unsupported functor evaluation type in ",
+               "INSFVMixingLengthEffectiveViscosityFunctorMaterialRZ.");
 
   /*
    * In RZ, the hoop strain is u_r / r. At the axis, regularity gives
@@ -108,7 +113,7 @@ INSFVMixingLengthEffectiveViscosityFunctorMaterialRZ::computeTurbulentViscosity(
 
   strain_norm_sq += 2.0 * Utility::pow<2>(hoop_strain);
 
-  const ADReal strain_norm = sqrt(strain_norm_sq + offset);
+  const ADReal strain_norm = sqrt(strain_norm_sq);
   const ADReal lm = _mixing_length(r, t);
 
   return _rho(r, t) * lm * lm * strain_norm;
