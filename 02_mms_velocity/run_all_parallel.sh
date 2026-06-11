@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP=/homes/aiskhak/projects/fv_app/fv_app-opt
+APP=${APP:-/homes/aiskhak/projects/fv_app/fv_app-opt}
 
 run_case () {
   level=$1
@@ -17,9 +17,10 @@ run_case () {
   cd ..
 }
 
-run_case n16  2
-run_case n32  4
-run_case n64  8
+run_case n16 2
+run_case n32 4
+run_case n64 8
 run_case n128 8
+run_case n256 16
 
 python3 check_convergence.py

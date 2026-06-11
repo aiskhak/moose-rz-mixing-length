@@ -1,12 +1,15 @@
-import numpy as np
-import pandas as pd
+#!/usr/bin/env python3
 from pathlib import Path
+import math
+import pandas as pd
+import numpy as np
 
 levels = [
     ("n16", 16),
     ("n32", 32),
     ("n64", 64),
     ("n128", 128),
+    ("n256", 256),
 ]
 
 rho = 1.0
@@ -17,187 +20,257 @@ xmin, xmax = 0.0, 1.0
 rmin, rmax = 0.0, 1.0
 
 
-def exact_fields(x, r):
-    A = x**2 * (1.0 - x)**2
-    Ap = 2.0*x*(1.0 - x)**2 - 2.0*x**2*(1.0 - x)
+def exact_fields(z, r):
+    A = z**2 * (1.0 - z)**2
+    Ap = 2.0 * z * (1.0 - z)**2 - 2.0 * z**2 * (1.0 - z)
+    App = 2.0 - 12.0*z + 12.0*z**2
 
-    R_over_r = r**2 - 2.0*r**3 + r**4
-    Rp_over_r = 3.0*r - 8.0*r**2 + 5.0*r**3
+    R_over_r = r - 2.0*r**3 + r**5
+    Rp_over_r = 2.0 - 8.0*r**2 + 6.0*r**4
+
+    d_Rp_over_r_dr = -16.0*r + 24.0*r**3
+    d_R_over_r_dr = 1.0 - 6.0*r**2 + 5.0*r**4
 
     uz = A * Rp_over_r
     ur = -Ap * R_over_r
-    p = x * r**2
+    p = z * r**2
 
-    return uz, ur, p
-
-
-def exact_mu_t(x, r):
-    A = x**2 * (1.0 - x)**2
-    Ap = 2.0*x*(1.0 - x)**2 - 2.0*x**2*(1.0 - x)
-    App = 2.0 - 12.0*x + 12.0*x**2
-
-    R_over_r = r**2 - 2.0*r**3 + r**4
-    Rp_over_r = 3.0*r - 8.0*r**2 + 5.0*r**3
-
-    d_Rp_over_r_dr = 3.0 - 16.0*r + 15.0*r**2
-    d_R_over_r_dr = 2.0*r - 6.0*r**2 + 4.0*r**3
-
-    uz_x = Ap * Rp_over_r
+    uz_z = Ap * Rp_over_r
     uz_r = A * d_Rp_over_r_dr
 
-    ur_x = -App * R_over_r
+    ur_z = -App * R_over_r
     ur_r = -Ap * d_R_over_r_dr
 
-    # This manufactured field is regular at r=0.
-    # ur/r = -Ap*(r - 2r^2 + r^3), including the r=0 limit.
-    hoop = -Ap * (r - 2.0*r**2 + r**3)
+    # Nonsingular expression for ur/r.
+    # At r = 0, this equals dur/dr = -A'(z).
+    hoop = -Ap * (1.0 - 2.0*r**2 + r**4)
 
     s2 = (
-        2.0 * uz_x**2
+        2.0 * uz_z**2
         + 2.0 * ur_r**2
-        + (uz_r + ur_x)**2
+        + (uz_r + ur_z)**2
         + 2.0 * hoop**2
     )
 
-    return rho * lm**2 * np.sqrt(s2)
+    mu_t = rho * lm**2 * np.sqrt(np.maximum(s2, 0.0))
+    mu_eff = mu + mu_t
+
+    return uz, ur, p, mu_t, mu_eff
 
 
-def l2_linf(error):
-    return np.sqrt(np.mean(error**2)), np.max(np.abs(error))
+def find_vpp_file(level):
+    candidates = sorted(Path(level).glob(f"velocity_mms_{level}_csv_vpp*.csv"))
+    if candidates:
+        return candidates[-1]
+
+    candidates = sorted(Path(level).glob("*vpp*.csv"))
+    if candidates:
+        return candidates[-1]
+
+    raise FileNotFoundError(f"No VPP CSV file found in {level}")
+
+
+def get_column(df, names):
+    lower = {c.lower(): c for c in df.columns}
+    for name in names:
+        if name.lower() in lower:
+            return df[lower[name.lower()]].to_numpy(dtype=float)
+    raise KeyError(f"Could not find any of columns {names}. Available columns: {list(df.columns)}")
+
+
+def l2(err):
+    return float(np.sqrt(np.mean(err**2)))
+
+
+def linf(err):
+    return float(np.max(np.abs(err)))
+
+
+def observed_order(e_coarse, e_fine):
+    return math.log(e_coarse / e_fine) / math.log(2.0)
 
 
 def offset_free_pressure_error(p_num, p_exact):
-    # Pressure is pinned, but this makes the norm robust to tiny constant offsets.
-    offset = np.mean(p_num - p_exact)
-    return (p_num - offset) - p_exact
+    e = p_num - p_exact
+    return e - np.mean(e)
 
 
 rows = []
+pointwise_outputs = []
 
-for name, n in levels:
-    files = sorted(Path(name).glob("*vpp*.csv"))
-    if not files:
-        raise RuntimeError(f"No VPP file found for {name}")
-
-    df = pd.read_csv(files[-1])
+for level, n in levels:
     h = (xmax - xmin) / n
+    f = find_vpp_file(level)
+    df = pd.read_csv(f)
 
-    # Interior-cell norms: exclude boundary/axis-adjacent cells.
+    z = get_column(df, ["x"])
+    r = get_column(df, ["y"])
+
+    uz_num = get_column(df, ["uz"])
+    ur_num = get_column(df, ["ur"])
+    p_num = get_column(df, ["p"])
+    mu_t_num = get_column(df, ["mu_t_out"])
+    mu_eff_num = get_column(df, ["mu_eff_out"])
+
+    uz_ex, ur_ex, p_ex, mu_t_ex, mu_eff_ex = exact_fields(z, r)
+
+    # Exclude two layers of boundary cells, consistent with the verification
+    # approach used to avoid boundary reconstruction effects.
     interior = (
-        (df["x"] > xmin + 2*h)
-        & (df["x"] < xmax - 2*h)
-        & (df["y"] > rmin + 2*h)
-        & (df["y"] < rmax - 2*h)
+        (z > xmin + 2*h)
+        & (z < xmax - 2*h)
+        & (r > rmin + 2*h)
+        & (r < rmax - 2*h)
     )
 
-    d = df[interior].copy()
-    xq = d["x"].to_numpy()
-    rq = d["y"].to_numpy()
+    if not np.any(interior):
+        raise RuntimeError(f"No interior cells selected for {level}")
 
-    uz_exact, ur_exact, p_exact = exact_fields(xq, rq)
-    mu_t_exact = exact_mu_t(xq, rq)
-    mu_eff_exact = mu + mu_t_exact
+    uz_err = uz_num[interior] - uz_ex[interior]
+    ur_err = ur_num[interior] - ur_ex[interior]
+    p_err = offset_free_pressure_error(p_num[interior], p_ex[interior])
+    mu_t_err = mu_t_num[interior] - mu_t_ex[interior]
 
-    e_uz = d["uz"].to_numpy() - uz_exact
-    e_ur = d["ur"].to_numpy() - ur_exact
-    e_p = offset_free_pressure_error(d["p"].to_numpy(), p_exact)
-    e_mu_t = d["mu_t_out"].to_numpy() - mu_t_exact
-    e_mu_eff = d["mu_eff_out"].to_numpy() - mu_eff_exact
+    sanity = linf((mu_eff_num - mu_eff_ex) - (mu_t_num - mu_t_ex))
 
-    uz_l2, uz_linf = l2_linf(e_uz)
-    ur_l2, ur_linf = l2_linf(e_ur)
-    p_l2, p_linf = l2_linf(e_p)
-    mu_t_l2, mu_t_linf = l2_linf(e_mu_t)
+    rows.append(
+        {
+            "grid": f"{n}x{n}",
+            "level": level,
+            "n": n,
+            "h": h,
+            "cells": int(np.sum(interior)),
+            "L2_uz": l2(uz_err),
+            "L2_ur": l2(ur_err),
+            "L2_p": l2(p_err),
+            "L2_mu_t": l2(mu_t_err),
+            "Linf_uz": linf(uz_err),
+            "Linf_ur": linf(ur_err),
+            "Linf_p": linf(p_err),
+            "Linf_mu_t": linf(mu_t_err),
+            "mu_eff_minus_mu_t_error_linf": sanity,
+            "file": str(f),
+        }
+    )
 
-    rows.append({
-        "grid": f"{n}x{n}",
-        "n": n,
-        "h": h,
-        "cells": len(d),
+    pointwise = pd.DataFrame(
+        {
+            "x": z,
+            "y": r,
+            "interior": interior,
+            "uz": uz_num,
+            "uz_exact": uz_ex,
+            "uz_error": uz_num - uz_ex,
+            "ur": ur_num,
+            "ur_exact": ur_ex,
+            "ur_error": ur_num - ur_ex,
+            "p": p_num,
+            "p_exact": p_ex,
+            "p_error": p_num - p_ex,
+            "mu_t": mu_t_num,
+            "mu_t_exact": mu_t_ex,
+            "mu_t_error": mu_t_num - mu_t_ex,
+            "mu_eff": mu_eff_num,
+            "mu_eff_exact": mu_eff_ex,
+            "mu_eff_error": mu_eff_num - mu_eff_ex,
+        }
+    )
+    pointwise_path = Path(level) / f"velocity_mms_{level}_pointwise.csv"
+    pointwise.to_csv(pointwise_path, index=False)
+    pointwise_outputs.append(str(pointwise_path))
 
-        "L2(uz)": uz_l2,
-        "order_L2_uz": np.nan,
 
-        "L2(ur)": ur_l2,
-        "order_L2_ur": np.nan,
+for i, row in enumerate(rows):
+    if i == 0:
+        row["order_uz"] = "--"
+        row["order_ur"] = "--"
+        row["order_p"] = "--"
+        row["order_mu_t"] = "--"
+    else:
+        prev = rows[i - 1]
+        row["order_uz"] = observed_order(prev["L2_uz"], row["L2_uz"])
+        row["order_ur"] = observed_order(prev["L2_ur"], row["L2_ur"])
+        row["order_p"] = observed_order(prev["L2_p"], row["L2_p"])
+        row["order_mu_t"] = observed_order(prev["L2_mu_t"], row["L2_mu_t"])
 
-        "L2(p)": p_l2,
-        "order_L2_p": np.nan,
 
-        "L2(mu_t)": mu_t_l2,
-        "order_L2_mu_t": np.nan,
+table = pd.DataFrame(rows)
 
-        "Linf(uz)": uz_linf,
-        "Linf(ur)": ur_linf,
-        "Linf(p)": p_linf,
-        "Linf(mu_t)": mu_t_linf,
-
-        "mu_eff_check": np.max(np.abs(e_mu_eff - e_mu_t)),
-        "file": str(files[-1]),
-    })
-
-res = pd.DataFrame(rows)
-
-for i in range(1, len(res)):
-    h1, h2 = res.loc[i - 1, "h"], res.loc[i, "h"]
-
-    for field, order_col in [
-        ("L2(uz)", "order_L2_uz"),
-        ("L2(ur)", "order_L2_ur"),
-        ("L2(p)", "order_L2_p"),
-        ("L2(mu_t)", "order_L2_mu_t"),
-    ]:
-        e1, e2 = res.loc[i - 1, field], res.loc[i, field]
-        res.loc[i, order_col] = np.log(e1 / e2) / np.log(h1 / h2)
-
-res.to_csv("velocity_mms_convergence_numeric.csv", index=False)
-
-paper = res[
+paper = table[
     [
         "grid",
         "h",
-        "L2(uz)",
-        "order_L2_uz",
-        "L2(ur)",
-        "order_L2_ur",
-        "L2(p)",
-        "order_L2_p",
-        "L2(mu_t)",
-        "order_L2_mu_t",
+        "L2_uz",
+        "order_uz",
+        "L2_ur",
+        "order_ur",
+        "L2_p",
+        "order_p",
+        "L2_mu_t",
+        "order_mu_t",
     ]
 ].copy()
 
-for col in ["h", "L2(uz)", "L2(ur)", "L2(p)", "L2(mu_t)"]:
-    paper[col] = paper[col].map(lambda x: f"{x:.4e}")
+paper_display = paper.copy()
 
-for col in ["order_L2_uz", "order_L2_ur", "order_L2_p", "order_L2_mu_t"]:
-    paper[col] = paper[col].map(lambda x: "--" if pd.isna(x) else f"{x:.2f}")
+for col in ["h", "L2_uz", "L2_ur", "L2_p", "L2_mu_t"]:
+    paper_display[col] = paper_display[col].map(lambda v: f"{v:.4e}")
 
-paper.to_csv("velocity_mms_paper_table.csv", index=False)
+for col in ["order_uz", "order_ur", "order_p", "order_mu_t"]:
+    paper_display[col] = paper_display[col].map(
+        lambda v: "--" if v == "--" else f"{float(v):.2f}"
+    )
+
+paper_display.columns = [
+    "grid",
+    "h",
+    "L2(uz)",
+    "order_L2_uz",
+    "L2(ur)",
+    "order_L2_ur",
+    "L2(p)",
+    "order_L2_p",
+    "L2(mu_t)",
+    "order_L2_mu_t",
+]
 
 print()
 print("Table: full RZ INSFV velocity MMS with effective viscosity")
 print()
-print(paper.to_string(index=False))
+print(paper_display.to_string(index=False))
+
+sanity_max = max(row["mu_eff_minus_mu_t_error_linf"] for row in rows)
+
 print()
 print("Sanity check:")
-print(f"  max |(mu_eff - mu_eff_exact) - (mu_t - mu_t_exact)| = {res['mu_eff_check'].max():.3e}")
+print(f"  max |(mu_eff - mu_eff_exact) - (mu_t - mu_t_exact)| = {sanity_max:.3e}")
+
+paper_display.to_csv("velocity_mms_paper_table.csv", index=False)
+table.to_csv("velocity_mms_convergence_numeric.csv", index=False)
+
 print()
 print("Wrote:")
 print("  velocity_mms_paper_table.csv")
 print("  velocity_mms_convergence_numeric.csv")
+for pth in pointwise_outputs:
+    print(f"  {pth}")
+
+# Simple pass/fail check.
+passed = True
+
+for key in ["L2_uz", "L2_ur", "L2_p", "L2_mu_t"]:
+    vals = [row[key] for row in rows]
+    if not all(vals[i] > vals[i + 1] for i in range(len(vals) - 1)):
+        passed = False
+        print(f"  ERROR: {key} does not monotonically decrease")
+
+if sanity_max > 1e-10:
+    passed = False
+    print("  ERROR: mu_eff consistency sanity check failed")
+
 print()
-
-ok = (
-    res.loc[len(res)-1, "L2(uz)"] < res.loc[0, "L2(uz)"]
-    and res.loc[len(res)-1, "L2(ur)"] < res.loc[0, "L2(ur)"]
-    and res.loc[len(res)-1, "L2(p)"] < res.loc[0, "L2(p)"]
-    and res.loc[len(res)-1, "L2(mu_t)"] < res.loc[0, "L2(mu_t)"]
-    and res["mu_eff_check"].max() < 1.0e-10
-)
-
 print("Verification result:")
-if ok:
-    print("  PASS")
-else:
-    print("  NOT PASS")
+print("  PASS" if passed else "  FAIL")
+
+if not passed:
+    raise SystemExit(1)
