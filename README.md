@@ -27,7 +27,7 @@ The repository is organized as focused verification and demonstration cases. Det
 
 Each case folder contains ready-to-run input files, run scripts, post-processing scripts, and reported tables.
 
-The case-generation scripts are intentionally not included. The stored MOOSE input files are the reproducible inputs used for the reported results.
+The stored MOOSE input files are the reproducible inputs used for the reported results.
 
 Edit the MOOSE executable path in the run scripts before running on a different system.
 
