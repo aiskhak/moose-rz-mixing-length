@@ -113,7 +113,16 @@ INSFVMixingLengthEffectiveViscosityFunctorMaterialRZ::computeTurbulentViscosity(
 
   strain_norm_sq += 2.0 * Utility::pow<2>(hoop_strain);
 
-  const ADReal strain_norm = sqrt(strain_norm_sq);
+  /*
+   * The strain-rate magnitude is exactly zero when strain_norm_sq is zero.
+   * We avoid evaluating the AD derivative of sqrt(x) at x = 0, where it is
+   * singular. This is not a strain-rate regularization: the returned value is
+   * still exactly zero for zero strain.
+   */
+  ADReal strain_norm = 0.0;
+  if (MetaPhysicL::raw_value(strain_norm_sq) > 0.0)
+    strain_norm = sqrt(strain_norm_sq);
+
   const ADReal lm = _mixing_length(r, t);
 
   return _rho(r, t) * lm * lm * strain_norm;
