@@ -296,9 +296,9 @@ advected_interp_method = 'upwind'
     execute_on = FINAL
     file_base = tamu
   []
-  [out]
-    type = Checkpoint
-    execute_on = FINAL
-    file_base = tamu
-  []
+  #[out]
+  #  type = Checkpoint
+  #  execute_on = FINAL
+  #  file_base = tamu
+  #[]
 []
