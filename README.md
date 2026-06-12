@@ -3,6 +3,7 @@
 This repository contains source files, MOOSE input files, and verification results supporting the technical note:
 
 **A Note on Using Axisymmetric Mixing-Length Eddy Viscosity in MOOSE**
+https://doi.org/10.13140/RG.2.2.25524.41607
 
 The repository is organized as focused verification and demonstration cases. Details for each case are provided in the corresponding folder README.
 
